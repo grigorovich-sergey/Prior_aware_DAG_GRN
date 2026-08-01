@@ -1,0 +1,18 @@
+# ═══════════════════════════════════════════════════════════
+# Default Configuration
+# ═══════════════════════════════════════════════════════════
+
+dataset:
+  name: None
+
+
+geneset_generation:
+  auto_from_anchors: True
+  anchors: ["APP", "PSEN1", "PSEN2", "APOE", "TREM2"]
+  omnipath_url: "https://omnipathdb.org/interactions"
+  num_layers: 2
+  number_by_layer: [8, 10]
+
+
+reproducibility:
+  seeds: [42]
