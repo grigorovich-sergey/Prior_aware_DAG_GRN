@@ -522,7 +522,11 @@ def prepare_execution(
         seed_transpiler=normalized_seed,
         **extra_options,
     )
-    transpiled_circuit = pass_manager.run(circuit)
+    circuit_for_execution = circuit.decompose(
+        gates_to_decompose=["crx", "cry"]
+    )
+
+    transpiled_circuit = pass_manager.run(circuit_for_execution)
     parameter_order = tuple(transpiled_circuit.parameters)
     if set(parameter_order) != set(expected_parameters):
         missing = sorted(

@@ -1,0 +1,568 @@
+{
+  "status": "completed",
+  "started_at_utc": "2026-08-02T04:53:32.345786+00:00",
+  "completed_at_utc": "2026-08-02T04:53:44.923061+00:00",
+  "effective_config": {
+    "input": {
+      "graph_file": "results/test_gene_dag.pkl.gz",
+      "observations_file": null
+    },
+    "observations": {
+      "number_of_observed_bitstrings": 20,
+      "seed": 42
+    },
+    "circuit": {
+      "rotation_axis": "y",
+      "initial_rotation_axis": null,
+      "controlled_rotation_axis": null
+    },
+    "execution": {
+      "mode": "aer_noiseless",
+      "backend_name": null,
+      "shots": 4096,
+      "result_timeout": null,
+      "aer_method": "automatic",
+      "seed_simulator": 42,
+      "aer_backend_options": {},
+      "sampler_options": {},
+      "use_runtime_session": false,
+      "session_max_time": null
+    },
+    "transpilation": {
+      "optimization_level": 2,
+      "seed_transpiler": 42,
+      "options": {}
+    },
+    "biological_validation": {
+      "edge_angle_zero_threshold": 0.05
+    },
+    "loss": {
+      "logarithm_base": 2.0,
+      "nonmatching_penalty_weight": 1.0
+    },
+    "optimizer": {
+      "method": "local_spsa",
+      "iterations": 100,
+      "seed": 42,
+      "bounds": [
+        -1.5707963267948966,
+        1.5707963267948966
+      ],
+      "initialization": {
+        "method": "zero",
+        "small_random_half_width": 0.05
+      },
+      "schedule": {
+        "learning_rate": 0.1,
+        "stability_offset": 10.0,
+        "learning_rate_exponent": 0.602,
+        "perturbation": 0.1,
+        "perturbation_exponent": 0.101
+      }
+    },
+    "output": {
+      "history_file": "results/test_model_training_history.csv",
+      "metadata_file": "results/test_model_training_metadata.json"
+    }
+  },
+  "random_seeds": {
+    "observations_configured": 42,
+    "observations_effective": 42,
+    "optimizer_configured": 42,
+    "optimizer_effective": 42,
+    "simulator": 42,
+    "transpiler": 42
+  },
+  "resolved_paths": {
+    "graph_file": "D:\\GitProjects\\Prior_aware_DAG_GRN\\results\\test_gene_dag.pkl.gz",
+    "history_file": "D:\\GitProjects\\Prior_aware_DAG_GRN\\results\\test_model_training_history.csv",
+    "metadata_file": "D:\\GitProjects\\Prior_aware_DAG_GRN\\results\\test_model_training_metadata.json"
+  },
+  "observed_frequencies": {
+    "00000": 0.09271079807166452,
+    "00001": 0.08226223578234779,
+    "00010": 0.02560490586882027,
+    "00011": 0.05047076799077026,
+    "00100": 0.03678340792428881,
+    "00110": 0.030867765839667907,
+    "00111": 0.08270543077153931,
+    "01000": 0.020172343415674112,
+    "01101": 0.046434141377389465,
+    "01110": 0.0444532399597801,
+    "10000": 0.04303255546107409,
+    "10001": 0.03552094494131781,
+    "10010": 0.01461582817111685,
+    "10011": 0.053951683255435964,
+    "10100": 0.022310972977542715,
+    "10101": 0.0977221773089758,
+    "10110": 0.01795861254249718,
+    "10111": 0.038230880437081206,
+    "11001": 0.06995317992497038,
+    "11100": 0.09423812797804543
+  },
+  "circuit": {
+    "ordered_genes": [
+      "JUN",
+      "ESR1",
+      "PPARG",
+      "AR",
+      "APP"
+    ],
+    "scheduled_edges": [
+      [
+        "JUN",
+        "APP"
+      ],
+      [
+        "JUN",
+        "AR"
+      ],
+      [
+        "JUN",
+        "ESR1"
+      ],
+      [
+        "JUN",
+        "PPARG"
+      ],
+      [
+        "ESR1",
+        "APP"
+      ],
+      [
+        "ESR1",
+        "AR"
+      ],
+      [
+        "ESR1",
+        "PPARG"
+      ],
+      [
+        "PPARG",
+        "APP"
+      ],
+      [
+        "PPARG",
+        "AR"
+      ],
+      [
+        "AR",
+        "APP"
+      ]
+    ],
+    "initial_rotation_axis": "y",
+    "controlled_rotation_axis": "y",
+    "add_measurements": true
+  },
+  "initial_gene_angles": [
+    1.545863669692652,
+    1.1045931133802975,
+    1.594207979645809,
+    1.2846245468142277,
+    1.685550904366086
+  ],
+  "gene_to_initial_angle": {
+    "JUN": 1.545863669692652,
+    "ESR1": 1.1045931133802975,
+    "PPARG": 1.594207979645809,
+    "AR": 1.2846245468142277,
+    "APP": 1.685550904366086
+  },
+  "initial_edge_angles": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "optimized_edge_angles": [
+    0.029689805705096148,
+    -0.0522619367157032,
+    -0.05747991385605701,
+    -0.001671935272943517,
+    -0.04130507773439722,
+    -0.06245899567584101,
+    0.022703702945222774,
+    -0.05135946434662796,
+    0.04103342074520002,
+    0.002897911267526928
+  ],
+  "edge_to_initial_angle": {
+    "JUN->APP": 0.0,
+    "JUN->AR": 0.0,
+    "JUN->ESR1": 0.0,
+    "JUN->PPARG": 0.0,
+    "ESR1->APP": 0.0,
+    "ESR1->AR": 0.0,
+    "ESR1->PPARG": 0.0,
+    "PPARG->APP": 0.0,
+    "PPARG->AR": 0.0,
+    "AR->APP": 0.0
+  },
+  "edge_to_optimized_angle": {
+    "JUN->APP": 0.029689805705096148,
+    "JUN->AR": -0.0522619367157032,
+    "JUN->ESR1": -0.05747991385605701,
+    "JUN->PPARG": -0.001671935272943517,
+    "ESR1->APP": -0.04130507773439722,
+    "ESR1->AR": -0.06245899567584101,
+    "ESR1->PPARG": 0.022703702945222774,
+    "PPARG->APP": -0.05135946434662796,
+    "PPARG->AR": 0.04103342074520002,
+    "AR->APP": 0.002897911267526928
+  },
+  "training_summary": {
+    "iterations_completed": 100,
+    "initial_total_loss": 0.3065753296932946,
+    "final_total_loss": 0.29680079242499174,
+    "initial_nonmatching_fraction": 0.243408203125,
+    "final_nonmatching_fraction": 0.229736328125,
+    "initial_agreement_score": 0.7661987883081858,
+    "final_agreement_score": 0.7600704375135682,
+    "central_jobs_submitted": 101,
+    "perturbation_jobs_submitted": 100
+  },
+  "execution_provenance": {
+    "mode": "aer_noiseless",
+    "backend_name": "aer_simulator",
+    "aer_method": "automatic",
+    "seed_simulator": 42,
+    "noise_model_backend": null,
+    "aer_backend_options": {},
+    "sampler_options": {},
+    "created_at_utc": "2026-08-02T04:53:32.350675+00:00",
+    "package_versions": {
+      "qiskit": "2.3.1",
+      "qiskit_aer": "0.17.2",
+      "qiskit_ibm_runtime": "0.46.1"
+    },
+    "prepared_at_utc": "2026-08-02T04:53:33.941984+00:00",
+    "optimization_level": 2,
+    "seed_transpiler": 42,
+    "transpiler_options": {},
+    "logical_num_qubits": 5,
+    "transpiled_num_qubits": 5,
+    "logical_depth": 11,
+    "transpiled_depth": 30,
+    "logical_gate_counts": {
+      "cry": 10,
+      "ry": 5,
+      "measure": 5,
+      "barrier": 1
+    },
+    "transpiled_gate_counts": {
+      "ry": 25,
+      "cx": 20,
+      "measure": 5,
+      "barrier": 1
+    },
+    "parameter_order": [
+      "edge_angle[0]",
+      "edge_angle[1]",
+      "edge_angle[2]",
+      "edge_angle[3]",
+      "edge_angle[4]",
+      "edge_angle[5]",
+      "edge_angle[6]",
+      "edge_angle[7]",
+      "edge_angle[8]",
+      "edge_angle[9]",
+      "initial_angle[0]",
+      "initial_angle[1]",
+      "initial_angle[2]",
+      "initial_angle[3]",
+      "initial_angle[4]"
+    ],
+    "ordered_genes": [
+      "JUN",
+      "ESR1",
+      "PPARG",
+      "AR",
+      "APP"
+    ],
+    "layout": null
+  },
+  "final_counts": {
+    "00101": 270,
+    "10100": 225,
+    "11010": 32,
+    "10001": 294,
+    "00000": 187,
+    "00100": 215,
+    "01101": 106,
+    "01011": 46,
+    "10000": 208,
+    "01000": 89,
+    "00011": 151,
+    "10101": 284,
+    "01100": 101,
+    "11111": 51,
+    "11101": 95,
+    "00111": 150,
+    "00010": 113,
+    "10111": 128,
+    "11011": 41,
+    "11000": 73,
+    "01001": 99,
+    "00001": 282,
+    "10010": 97,
+    "00110": 127,
+    "11100": 80,
+    "10011": 146,
+    "01110": 50,
+    "01010": 42,
+    "10110": 138,
+    "11110": 42,
+    "11001": 85,
+    "01111": 49
+  },
+  "final_probabilities": {
+    "00101": 0.06591796875,
+    "10100": 0.054931640625,
+    "11010": 0.0078125,
+    "10001": 0.07177734375,
+    "00000": 0.045654296875,
+    "00100": 0.052490234375,
+    "01101": 0.02587890625,
+    "01011": 0.01123046875,
+    "10000": 0.05078125,
+    "01000": 0.021728515625,
+    "00011": 0.036865234375,
+    "10101": 0.0693359375,
+    "01100": 0.024658203125,
+    "11111": 0.012451171875,
+    "11101": 0.023193359375,
+    "00111": 0.03662109375,
+    "00010": 0.027587890625,
+    "10111": 0.03125,
+    "11011": 0.010009765625,
+    "11000": 0.017822265625,
+    "01001": 0.024169921875,
+    "00001": 0.06884765625,
+    "10010": 0.023681640625,
+    "00110": 0.031005859375,
+    "11100": 0.01953125,
+    "10011": 0.03564453125,
+    "01110": 0.01220703125,
+    "01010": 0.01025390625,
+    "10110": 0.03369140625,
+    "11110": 0.01025390625,
+    "11001": 0.020751953125,
+    "01111": 0.011962890625
+  },
+  "final_sampler_metadata": {
+    "shots": 4096,
+    "circuit_metadata": {},
+    "simulator_metadata": {
+      "omp_enabled": true,
+      "parallel_experiments": 1,
+      "max_memory_mb": 8035,
+      "max_gpu_memory_mb": 0,
+      "time_taken_execute": 0.0120028,
+      "time_taken_parameter_binding": 0.0001312
+    }
+  },
+  "final_execution_metadata": {
+    "mode": "aer_noiseless",
+    "backend_name": "aer_simulator",
+    "requested_shots_per_parameter_set": 4096,
+    "number_of_parameter_sets": 1,
+    "submitted_at_utc": "2026-08-02T04:53:44.880923+00:00",
+    "completed_at_utc": "2026-08-02T04:53:44.905724+00:00",
+    "primitive_metadata": {
+      "version": 2
+    }
+  },
+  "final_loss_evaluation": {
+    "total_loss": 0.29680079242499174,
+    "distribution_loss": 0.06706446429999173,
+    "support_penalty": 0.229736328125,
+    "nonmatching_fraction": 0.229736328125,
+    "agreement_score": 0.7600704375135682,
+    "projection": {
+      "matching_counts": {
+        "00000": 187,
+        "00001": 282,
+        "00010": 113,
+        "00011": 151,
+        "00100": 215,
+        "00110": 127,
+        "00111": 150,
+        "01000": 89,
+        "01101": 106,
+        "01110": 50,
+        "10000": 208,
+        "10001": 294,
+        "10010": 97,
+        "10011": 146,
+        "10100": 225,
+        "10101": 284,
+        "10110": 138,
+        "10111": 128,
+        "11001": 85,
+        "11100": 80
+      },
+      "matching_probabilities": {
+        "00000": 0.059270998415213945,
+        "00001": 0.08938193343898573,
+        "00010": 0.0358161648177496,
+        "00011": 0.04786053882725832,
+        "00100": 0.06814580031695722,
+        "00110": 0.040253565768621234,
+        "00111": 0.04754358161648178,
+        "01000": 0.02820919175911252,
+        "01101": 0.03359746434231379,
+        "01110": 0.01584786053882726,
+        "10000": 0.0659270998415214,
+        "10001": 0.09318541996830428,
+        "10010": 0.030744849445324882,
+        "10011": 0.046275752773375596,
+        "10100": 0.07131537242472266,
+        "10101": 0.09001584786053883,
+        "10110": 0.043740095087163235,
+        "10111": 0.04057052297939778,
+        "11001": 0.02694136291600634,
+        "11100": 0.025356576862123614
+      },
+      "total_shots": 4096,
+      "matching_shots": 3155,
+      "excluded_shots": 941,
+      "matching_fraction": 0.770263671875
+    }
+  },
+  "biological_sign_concordance": {
+    "status": "evaluated",
+    "zero_threshold_radians": 0.05,
+    "total_edges": 10,
+    "evaluated_edges": 9,
+    "excluded_mixed_or_unknown_edges": 1,
+    "correct_sign_edges": 2,
+    "near_zero_edges": 6,
+    "wrong_sign_edges": 1,
+    "strict_sign_accuracy": 0.2222222222222222,
+    "half_credit_score": 0.5555555555555556,
+    "edges": [
+      {
+        "edge": "JUN->APP",
+        "source": "JUN",
+        "target": "APP",
+        "known_relationship": "activation",
+        "expected_angle_sign": 1,
+        "trained_angle": 0.029689805705096148,
+        "trained_angle_class": "near_zero",
+        "classification": "near_zero",
+        "score": 0.5
+      },
+      {
+        "edge": "JUN->AR",
+        "source": "JUN",
+        "target": "AR",
+        "known_relationship": "repression",
+        "expected_angle_sign": -1,
+        "trained_angle": -0.0522619367157032,
+        "trained_angle_class": "negative",
+        "classification": "correct",
+        "score": 1.0
+      },
+      {
+        "edge": "JUN->ESR1",
+        "source": "JUN",
+        "target": "ESR1",
+        "known_relationship": "activation",
+        "expected_angle_sign": 1,
+        "trained_angle": -0.05747991385605701,
+        "trained_angle_class": "negative",
+        "classification": "wrong",
+        "score": 0.0
+      },
+      {
+        "edge": "JUN->PPARG",
+        "source": "JUN",
+        "target": "PPARG",
+        "known_relationship": "repression",
+        "expected_angle_sign": -1,
+        "trained_angle": -0.001671935272943517,
+        "trained_angle_class": "near_zero",
+        "classification": "near_zero",
+        "score": 0.5
+      },
+      {
+        "edge": "ESR1->APP",
+        "source": "ESR1",
+        "target": "APP",
+        "known_relationship": "activation",
+        "expected_angle_sign": 1,
+        "trained_angle": -0.04130507773439722,
+        "trained_angle_class": "near_zero",
+        "classification": "near_zero",
+        "score": 0.5
+      },
+      {
+        "edge": "ESR1->AR",
+        "source": "ESR1",
+        "target": "AR",
+        "known_relationship": "mixed",
+        "expected_angle_sign": null,
+        "trained_angle": -0.06245899567584101,
+        "trained_angle_class": "negative",
+        "classification": "not_evaluable",
+        "score": null
+      },
+      {
+        "edge": "ESR1->PPARG",
+        "source": "ESR1",
+        "target": "PPARG",
+        "known_relationship": "repression",
+        "expected_angle_sign": -1,
+        "trained_angle": 0.022703702945222774,
+        "trained_angle_class": "near_zero",
+        "classification": "near_zero",
+        "score": 0.5
+      },
+      {
+        "edge": "PPARG->APP",
+        "source": "PPARG",
+        "target": "APP",
+        "known_relationship": "repression",
+        "expected_angle_sign": -1,
+        "trained_angle": -0.05135946434662796,
+        "trained_angle_class": "negative",
+        "classification": "correct",
+        "score": 1.0
+      },
+      {
+        "edge": "PPARG->AR",
+        "source": "PPARG",
+        "target": "AR",
+        "known_relationship": "repression",
+        "expected_angle_sign": -1,
+        "trained_angle": 0.04103342074520002,
+        "trained_angle_class": "near_zero",
+        "classification": "near_zero",
+        "score": 0.5
+      },
+      {
+        "edge": "AR->APP",
+        "source": "AR",
+        "target": "APP",
+        "known_relationship": "activation",
+        "expected_angle_sign": 1,
+        "trained_angle": 0.002897911267526928,
+        "trained_angle_class": "near_zero",
+        "classification": "near_zero",
+        "score": 0.5
+      }
+    ],
+    "controlled_rotation_axis": "y",
+    "interpretation": "Limited angle-sign concordance sanity check; it is not proof that a biological regulatory mechanism was reconstructed."
+  },
+  "configuration_sources": {
+    "default": "D:\\GitProjects\\Prior_aware_DAG_GRN\\configs\\default_model.yaml",
+    "override": "D:\\GitProjects\\Prior_aware_DAG_GRN\\configs\\test_model.yaml"
+  }
+}

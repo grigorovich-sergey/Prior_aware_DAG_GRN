@@ -1,0 +1,24 @@
+# Default configuration for training the prior-aware quantum DAG model.
+# A user-provided --config file is recursively merged over these values.
+
+input:
+  graph_file: "results/test_gene_dag.pkl.gz"
+  # Reserved until the observations-table schema is agreed.
+  observations_file: null
+
+observations:
+  # null chooses min(8, half of the possible bitstrings), preserving
+  # incomplete support for every circuit width.
+  number_of_observed_bitstrings: 20
+  seed: 42
+  
+transpilation:
+  optimization_level: 2
+  
+optimizer:
+  iterations: 100
+
+output:
+  # Set history_file to null to disable the CSV output.
+  history_file: "results/test_model_training_history.csv"
+  metadata_file: "results/test_model_training_metadata.json"

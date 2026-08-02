@@ -3,10 +3,10 @@
 # ═══════════════════════════════════════════════════════════
 
 geneset_generation:
-  anchors: ["APP", "PSEN1", "PSEN2", "APOE", "TREM2"]
+  anchors: ["APP"]
   # null: form and rank an upstream candidate pool from the anchors.
   # List of lists: skip candidate formation and use these genes directly
-  layers_genes: ["AR", "ESR1", "JUN", "MYC", "PPARG", "RELA", "ETV3", "FOXN1", "FOXP1", "HOXB13", "KLF6", "SKIL", "SP4"]
+  layers_genes: ["AR", "ESR1", "JUN", "PPARG"]
 
 
 output:

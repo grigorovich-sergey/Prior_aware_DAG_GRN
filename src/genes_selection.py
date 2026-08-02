@@ -15,6 +15,14 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 
+REGULATORY_SIGN_VALUES = {
+    "activation": 1,
+    "repression": -1,
+    "mixed": 0,
+    "unknown": 0,
+}
+
+
 def parse_args():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
@@ -76,7 +84,7 @@ def merge_config(base: dict, overrides: dict) -> dict:
 
 def load_effective_config(override_path: str | None) -> dict:
     """Load the repository default config and apply an optional short override."""
-    default_path = Path(__file__).resolve().parents[1] / "configs" / "default.yaml"
+    default_path = Path(__file__).resolve().parents[1] / "configs" / "default_genes.yaml"
     config = load_config(default_path)
     if override_path is not None:
         config = merge_config(config, load_config(override_path))
@@ -1216,6 +1224,31 @@ def add_edge_support_attributes(graph: nx.DiGraph) -> nx.DiGraph:
 
     return graph
 
+
+def add_regulatory_sign_attributes(graph: nx.DiGraph) -> nx.DiGraph:
+    """Normalize and explicitly encode the known sign of every edge.
+
+    The readable ``sign`` attribute is retained. ``regulatory_sign`` is added
+    for downstream model checks: activation is ``1``, repression is ``-1``,
+    and mixed or unknown evidence is ``0`` (not evaluable as one sign).
+    """
+    graph = graph.copy()
+
+    for source, target, data in graph.edges(data=True):
+        raw_sign = data.get("sign", "unknown")
+        sign = str(raw_sign).strip().lower()
+        if sign not in REGULATORY_SIGN_VALUES:
+            warnings.warn(
+                f"Edge {source}->{target} has unsupported sign {raw_sign!r}; "
+                "it will be stored as unknown."
+            )
+            sign = "unknown"
+
+        data["sign"] = sign
+        data["regulatory_sign"] = REGULATORY_SIGN_VALUES[sign]
+
+    return graph
+
 def canonicalize_cycle(cycle: list[str]) -> tuple[str, ...]:
     """
     Rotate a cycle so that it always has the same representation.
@@ -1844,6 +1877,10 @@ def main() -> int:
             "Execution stopped; no graph or figure was saved."
         )
         return 1
+
+    # Preserve a normalized readable sign and an aligned numeric sign on the
+    # final graph consumed by the quantum-circuit and trainer modules.
+    dag_graph = add_regulatory_sign_attributes(dag_graph)
 
     graph_path = resolve_project_path(output["graph_file"])
     figure_path = resolve_project_path(output["figure_file"])

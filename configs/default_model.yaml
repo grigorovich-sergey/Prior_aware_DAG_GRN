@@ -1,0 +1,64 @@
+# Default configuration for training the prior-aware quantum DAG model.
+# A user-provided --config file is recursively merged over these values.
+
+input:
+  graph_file: "results/selected_gene_dag.pkl.gz"
+  # Reserved until the observations-table schema is agreed.
+  observations_file: null
+
+observations:
+  # null chooses min(8, half of the possible bitstrings), preserving
+  # incomplete support for every circuit width.
+  number_of_observed_bitstrings: null
+  seed: 42
+
+circuit:
+  rotation_axis: "y"
+  initial_rotation_axis: null
+  controlled_rotation_axis: null
+
+execution:
+  mode: "aer_noiseless"  # aer_noiseless, aer_noisy, or ibm_hardware
+  backend_name: null      # required for aer_noisy and ibm_hardware
+  shots: 4096
+  result_timeout: null
+  aer_method: "automatic"
+  seed_simulator: 42
+  aer_backend_options: {}
+  sampler_options: {}
+  use_runtime_session: false
+  session_max_time: null
+
+transpilation:
+  optimization_level: 1
+  seed_transpiler: 42
+  options: {}
+
+biological_validation:
+  edge_angle_zero_threshold: 0.05
+
+loss:
+  # Base 2 makes the maximum Jensen-Shannon divergence exactly 1.
+  logarithm_base: 2.0
+  nonmatching_penalty_weight: 1.0
+
+optimizer:
+  method: "local_spsa"
+  iterations: 100
+  seed: 42
+  bounds: [-1.5707963267948966, 1.5707963267948966]
+  initialization:
+    method: "zero"       # zero (default) or small_random
+    small_random_half_width: 0.05
+  schedule:
+    # a_k = a / (A + k)^alpha; c_k = c / k^gamma, with k starting at 1.
+    learning_rate: 0.1
+    stability_offset: 10.0
+    learning_rate_exponent: 0.602
+    perturbation: 0.1
+    perturbation_exponent: 0.101
+
+output:
+  # Set history_file to null to disable the CSV output.
+  history_file: "results/model_training_history.csv"
+  metadata_file: "results/model_training_metadata.json"
