@@ -1,0 +1,14 @@
+# ═══════════════════════════════════════════════════════════
+# Default Configuration
+# ═══════════════════════════════════════════════════════════
+
+geneset_generation:
+  anchors: ["APP", "PSEN1", "PSEN2", "APOE", "TREM2"]
+  # null: form and rank an upstream candidate pool from the anchors.
+  # List of lists: skip candidate formation and use these genes directly
+  layers_genes: ["AR", "ESR1", "JUN", "MYC", "PPARG", "RELA", "ETV3", "FOXN1", "FOXP1", "HOXB13", "KLF6", "SKIL", "SP4"]
+
+
+output:
+  graph_file: "results/test_gene_dag.pkl.gz"
+  figure_file: "results/figures/test_gene_dag.png"

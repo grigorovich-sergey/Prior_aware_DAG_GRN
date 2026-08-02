@@ -2,17 +2,38 @@
 # Default Configuration
 # ═══════════════════════════════════════════════════════════
 
-dataset:
-  name: None
-
-
 geneset_generation:
-  auto_from_anchors: True
   anchors: ["APP", "PSEN1", "PSEN2", "APOE", "TREM2"]
+  # null: form and rank an upstream candidate pool from the anchors.
+  # List of lists: skip candidate formation and use these genes directly
+  layers_genes: null
   omnipath_url: "https://omnipathdb.org/interactions"
   num_layers: 2
   number_by_layer: [8, 10]
 
+omnipath:
+  timeout_seconds: 60
+  require_directed: true
+  require_signed: true
+  include_self_loops: true
+  license_type: "academic"
+  verbose: true
 
-reproducibility:
-  seeds: [42]
+selection:
+  layer_1_min_sources: 2
+  weight_anchor_targets: 3.0
+  weight_same_layer_targets: -1.0
+  weight_upstream_sources: 1.0
+  weight_previous_targets: 3.0
+
+plotting:
+  minimum_peeled_candidates: 3
+  figsize: [12, 12]
+  node_size: 1300
+  anchor_node_size: 1800
+  font_size: 8
+  dpi: 300
+
+output:
+  graph_file: "results/selected_gene_dag.pkl.gz"
+  figure_file: "results/figures/selected_gene_dag.png"

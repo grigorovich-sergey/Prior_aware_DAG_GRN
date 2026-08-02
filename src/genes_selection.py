@@ -1,5 +1,5 @@
 from io import StringIO
-from collections.abc import Sequence
+from copy import deepcopy
 import re
 import numpy as np
 import pandas as pd
@@ -10,7 +10,6 @@ import argparse
 import gzip
 import pickle
 from pathlib import Path
-from difflib import get_close_matches
 import warnings
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -20,32 +19,18 @@ def parse_args():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description=(
-            "Optimize quantum-reservoir angles for "
-            "homeostatic outputs."
+            "Select a prior-aware gene-regulatory DAG."
         )
     )
 
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/default.yaml",
-        help="Path to the YAML configuration.",
+        default=None,
+        help=(
+            "Optional YAML file whose values override configs/default.yaml."
+        ),
     )
-
-    parser.add_argument(
-        "--num_layers",
-        type=int,
-        default=2,
-        help="Override num_layers.",
-    )
-    parser.add_argument(
-        "--auto_from_anchors",
-        type=bool,
-        default=True,
-        help="Override .",
-    )
-
-
     return parser.parse_args()
 
 
@@ -76,6 +61,72 @@ def load_config(config_path: str) -> dict:
         )
 
     return config
+
+
+def merge_config(base: dict, overrides: dict) -> dict:
+    """Recursively merge override values into a copy of the base config."""
+    merged = deepcopy(base)
+    for key, value in overrides.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = merge_config(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def load_effective_config(override_path: str | None) -> dict:
+    """Load the repository default config and apply an optional short override."""
+    default_path = Path(__file__).resolve().parents[1] / "configs" / "default.yaml"
+    config = load_config(default_path)
+    if override_path is not None:
+        config = merge_config(config, load_config(override_path))
+    return config
+
+
+def resolve_project_path(path: str | Path) -> Path:
+    """Resolve relative input/output paths from the repository root."""
+    path = Path(path).expanduser()
+    if path.is_absolute():
+        return path
+    return Path(__file__).resolve().parents[1] / path
+
+
+def validate_config(config: dict) -> None:
+    """Validate settings whose relationships are required by the pipeline."""
+    generation = config["geneset_generation"]
+    anchors = normalize_gene_symbols(generation["anchors"])
+    layers_genes = generation.get("layers_genes")
+
+    if generation["num_layers"] < 1:
+        raise ValueError("geneset_generation.num_layers must be at least 1.")
+
+    counts = generation["number_by_layer"]
+    if layers_genes is None and len(counts) != generation["num_layers"]:
+        raise ValueError(
+            "geneset_generation.number_by_layer must contain exactly "
+            "num_layers entries when layers_genes is null."
+        )
+    if any(not isinstance(value, int) or value < 0 for value in counts):
+        raise ValueError("number_by_layer values must be non-negative integers.")
+
+    if layers_genes is not None:
+        if not isinstance(layers_genes, list) or not layers_genes:
+            raise ValueError(
+                "geneset_generation.layers_genes must be null or a "
+                "non-empty gene list."
+            )
+        if any(not isinstance(gene, str) for gene in layers_genes):
+            raise ValueError("Every layers_genes entry must be a gene symbol string.")
+        normalized = normalize_gene_symbols(layers_genes)
+        overlap = set(anchors) & set(normalized)
+        if overlap:
+            raise ValueError(
+                "Anchors must not be repeated in layers_genes: "
+                + ", ".join(sorted(overlap))
+            )
+
+    if config["plotting"]["minimum_peeled_candidates"] < 1:
+        raise ValueError("plotting.minimum_peeled_candidates must be at least 1.")
 
 def fetch_collectri_from_omnipath(
     config: dict,
@@ -309,6 +360,7 @@ def load_collectri_from_omnipath(
     require_directed: bool = True,
     require_signed: bool = True,
     include_self_loops: bool = True,
+    license_type: str = "academic",
     verbose: bool = True,
 ) -> pd.DataFrame:
     """
@@ -319,7 +371,8 @@ def load_collectri_from_omnipath(
         require_directed=require_directed,
         require_signed=require_signed,
         include_self_loops=include_self_loops,
-        config = config,
+        license_type=license_type,
+        config=config,
     )
 
     interactions = standardize_collectri_columns(raw_interactions)
@@ -370,10 +423,43 @@ def normalize_gene_symbols(genes: list[str] | tuple[str, ...] | set[str]) -> lis
 
     return normalized
 
+def validate_gene_symbols(
+    interactions: pd.DataFrame,
+    genes: list[str] | tuple[str, ...] | set[str],
+    list_name: str,
+) -> list[str]:
+    """Return normalized genes only when every symbol exists in CollecTRI."""
+    required_columns = {"regulator", "target"}
+    missing_columns = required_columns - set(interactions.columns)
+
+    if missing_columns:
+        missing_text = ", ".join(sorted(missing_columns))
+        raise ValueError(
+            f"Interaction table is missing required columns: {missing_text}"
+        )
+
+    normalized_genes = normalize_gene_symbols(genes)
+    available_symbols = (
+        set(interactions["regulator"].dropna())
+        | set(interactions["target"].dropna())
+    )
+    missing_genes = [
+        gene for gene in normalized_genes if gene not in available_symbols
+    ]
+
+    if missing_genes:
+        raise ValueError(
+            f"Unknown gene symbol(s) in {list_name}: "
+            + ", ".join(missing_genes)
+            + ". Every provided gene must exactly match a symbol in the "
+              "current CollecTRI interaction table."
+        )
+
+    return normalized_genes
+
 def validate_anchors(
     interactions: pd.DataFrame,
     anchors: list[str] | tuple[str, ...] | set[str],
-    allow_missing: bool = False,
 ) -> tuple[list[str], pd.DataFrame]:
     """
     Validate anchor genes against a standardized CollecTRI interaction table.
@@ -384,9 +470,6 @@ def validate_anchors(
         Standardized interaction table containing `regulator` and `target`.
     anchors
         Manually selected anchor gene symbols.
-    allow_missing
-        If False, stop when an anchor is absent from the interaction table.
-        If True, retain absent anchors and issue a warning.
 
     Returns
     -------
@@ -395,63 +478,15 @@ def validate_anchors(
     anchor_summary
         Regulatory coverage summary for each anchor.
     """
-    required_columns = {"regulator", "target"}
-    missing_columns = required_columns - set(interactions.columns)
-
-    if missing_columns:
-        missing_text = ", ".join(sorted(missing_columns))
-        raise ValueError(
-            f"Interaction table is missing required columns: {missing_text}"
-        )
-
-    normalized_anchors = normalize_gene_symbols(anchors)
-
-    available_symbols = sorted(
+    normalized_anchors = validate_gene_symbols(
+        interactions,
+        anchors,
+        list_name="anchors",
+    )
+    available_symbol_set = (
         set(interactions["regulator"].dropna())
         | set(interactions["target"].dropna())
     )
-    available_symbol_set = set(available_symbols)
-
-    missing_anchors = [
-        anchor
-        for anchor in normalized_anchors
-        if anchor not in available_symbol_set
-    ]
-
-    if missing_anchors:
-        messages = []
-
-        for anchor in missing_anchors:
-            suggestions = get_close_matches(
-                anchor,
-                available_symbols,
-                n=3,
-                cutoff=0.6,
-            )
-
-            if suggestions:
-                message = (
-                    f"{anchor}: not found. "
-                    f"Possible matches: {', '.join(suggestions)}"
-                )
-            else:
-                message = f"{anchor}: not found; no close match detected"
-
-            messages.append(message)
-
-        error_message = (
-            "Some anchors are absent from the current CollecTRI table:\n- "
-            + "\n- ".join(messages)
-        )
-
-        if allow_missing:
-            warnings.warn(error_message)
-        else:
-            raise ValueError(
-                error_message
-                + "\nUse allow_missing=True to retain intentional "
-                  "zero-coverage anchors."
-            )
 
     summary_rows = []
 
@@ -649,6 +684,27 @@ def assign_minimal_layers(
         layer_by_node,
         name="layer",
     )
+
+    return layer_by_node
+
+
+def reconstruct_selected_gene_layers(
+    graph: nx.DiGraph,
+    anchors: list[str] | set[str],
+    fallback_layer: int = 1,
+) -> dict[str, int]:
+    """Infer expert-selected gene layers using the candidate-pool logic.
+
+    Layers are minimum upstream distances from an anchor. Selected genes that
+    are not upstream-connected to any anchor keep the initial fallback layer.
+    """
+    layer_by_node = assign_minimal_layers(graph, anchors)
+    unassigned = set(graph.nodes) - set(layer_by_node)
+
+    if unassigned:
+        fallback = {gene: fallback_layer for gene in unassigned}
+        layer_by_node.update(fallback)
+        nx.set_node_attributes(graph, fallback, name="layer")
 
     return layer_by_node
 
@@ -1298,108 +1354,6 @@ def find_weakest_cycle_edge(
 
     return None, weakest
 
-def break_cycles_in_layer(
-    graph: nx.DiGraph,
-    layer_number: int,
-) -> tuple[nx.DiGraph, pd.DataFrame, list[tuple[str, ...]]]:
-    """
-    Break cycles within one layer using edge evidence.
-
-    Shorter cycles are examined first. After each edge removal,
-    the complete cycle list is recalculated.
-    """
-    working_graph = add_edge_support_attributes(graph)
-
-    removed_edges = []
-    warned_cycles = set()
-    unresolved_cycles = []
-
-    while True:
-        cycles = get_layer_cycles(
-            working_graph,
-            layer_number,
-        )
-
-        if not cycles:
-            unresolved_cycles = []
-            break
-
-        edge_removed = False
-        unresolved_this_pass = []
-
-        for cycle in cycles:
-            edge_to_remove, tied_edges = find_weakest_cycle_edge(
-                working_graph,
-                cycle,
-            )
-
-            if edge_to_remove is None:
-                unresolved_this_pass.append(cycle)
-
-                if cycle not in warned_cycles:
-                    cycle_text = " -> ".join(
-                        list(cycle) + [cycle[0]]
-                    )
-
-                    tied_text = ", ".join(
-                        (
-                            f"{edge['source']}->{edge['target']} "
-                            f"(citations={edge['n_unique_citations']}, "
-                            f"curation={edge['curation_effort']})"
-                        )
-                        for edge in tied_edges
-                    )
-
-                    warnings.warn(
-                        f"Unresolved cycle in Layer {layer_number}: "
-                        f"{cycle_text}. "
-                        f"Weakest edges remain tied: {tied_text}"
-                    )
-
-                    warned_cycles.add(cycle)
-
-                # Another cycle may still be resolvable.
-                continue
-
-            source, target = edge_to_remove
-            edge_data = working_graph.edges[source, target]
-
-            removed_edges.append(
-                {
-                    "regulator": source,
-                    "target": target,
-                    "layer": layer_number,
-                    "cycle": " -> ".join(
-                        list(cycle) + [cycle[0]]
-                    ),
-                    "cycle_length": len(cycle),
-                    "n_unique_citations": edge_data[
-                        "n_unique_citations"
-                    ],
-                    "curation_effort": edge_data[
-                        "curation_effort"
-                    ],
-                }
-            )
-
-            working_graph.remove_edge(source, target)
-            edge_removed = True
-
-            # Recompute every cycle after one edge is removed.
-            break
-
-        if not edge_removed:
-            unresolved_cycles = unresolved_this_pass
-            break
-
-    removed_edges = pd.DataFrame(removed_edges)
-
-    return (
-        working_graph,
-        removed_edges,
-        unresolved_cycles,
-    )
-
 def break_graph_cycles(
     graph: nx.DiGraph,
 ) -> tuple[nx.DiGraph, pd.DataFrame, list[tuple[str, ...]]]:
@@ -1721,6 +1675,7 @@ def save_gene_graph(
     Save a NetworkX gene-regulatory graph with all attributes.
     """
     file_path = Path(file_path)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
 
     with gzip.open(file_path, "wb") as file:
         pickle.dump(
@@ -1730,31 +1685,41 @@ def save_gene_graph(
         )
         
 def main() -> int:
-    '''
-    
-    '''
+    """Select or load genes, reconstruct layers, and save a validated DAG."""
     args = parse_args()
+    config = load_effective_config(args.config)
+    validate_config(config)
 
-    config = load_config(args.config)
+    generation = config["geneset_generation"]
+    data_options = config["omnipath"]
+    selection = config["selection"]
+    plotting = config["plotting"]
+    output = config["output"]
 
-    if args.auto_from_anchors is not None:
-        config["geneset_generation"]["auto_from_anchors"] = args.auto_from_anchors
+    anchors = generation["anchors"]
+    layers_genes = generation.get("layers_genes")
 
-    if args.num_layers is not None:
-        config["geneset_generation"]["num_layers"] = args.num_layers
-    
-#    if args.enforce_angles:
-#        config["output"]["enforce_angles"] = True
-        
-    anchors = config["geneset_generation"]["anchors"]
-    number_by_layer = config["geneset_generation"]["number_by_layer"]
-    
-    collectri_edges = load_collectri_from_omnipath(config=config)
+    collectri_edges = load_collectri_from_omnipath(
+        config=config,
+        timeout=data_options["timeout_seconds"],
+        require_directed=data_options["require_directed"],
+        require_signed=data_options["require_signed"],
+        include_self_loops=data_options["include_self_loops"],
+        license_type=data_options["license_type"],
+        verbose=data_options["verbose"],
+    )
 
     anchors, anchor_summary = validate_anchors(
         interactions=collectri_edges,
         anchors=anchors,
     )
+
+    if layers_genes is not None:
+        layers_genes = validate_gene_symbols(
+            interactions=collectri_edges,
+            genes=layers_genes,
+            list_name="layers_genes",
+        )
 
     print("Validated anchors:")
     print(anchors)
@@ -1762,97 +1727,52 @@ def main() -> int:
     print("\nAnchor regulatory coverage:")
     print(anchor_summary.to_string(index=False))
 
-    candidate_pool = build_upstream_candidate_pool(
-        interactions=collectri_edges,
-        anchors=anchors,
-        number_of_layers=config["geneset_generation"]["num_layers"],
-    )
+    using_explicit_genes = layers_genes is not None
 
-    network_genes = set(anchors) | candidate_pool
-
-    print(f"Anchors: {len(anchors)}")
-    print(f"Upstream candidates: {len(candidate_pool)}")
-    print(f"Total network genes: {len(network_genes)}")
-
-    candidate_interactions, candidate_graph = build_candidate_graph(
-        interactions=collectri_edges,
-        anchors=anchors,
-        candidate_pool=candidate_pool,
-    )
-
-    print(f"Nodes: {candidate_graph.number_of_nodes()}")
-    print(f"Edges: {candidate_graph.number_of_edges()}")
-
-    print(
-        f"Anchors: "
-        f"{sum(data['is_anchor'] for _, data in candidate_graph.nodes(data=True))}"
-    )
-
-    layer_by_node = assign_minimal_layers(
-        graph=candidate_graph,
-        anchors=anchors,
-    )
-
-    layer_counts = pd.Series(layer_by_node).value_counts().sort_index()
-
-    print("Nodes per layer:")
-    print(layer_counts)
-
-    selected_layer_1, ranking_layer_1 = select_layer_1(
-        graph=candidate_graph,
-        layer_by_node=layer_by_node,
-        anchors=anchors,
-        number_to_keep=10,
-        min_sources=3,
-        weight_anchor_targets=3.0,
-        weight_same_layer_targets=-3.0,
-        weight_upstream_sources=1.0,
-    )
-
-    print(ranking_layer_1.to_string(index=False))
-    print("\nSelected Layer 1:")
-    print(sorted(selected_layer_1))
-
-    selected_by_layer = {
-        0: set(anchors)
-    }
-
-    ranking_by_layer = {}
-
-    selected_by_layer[1], ranking_by_layer[1] = select_layer_1(
-        graph=candidate_graph,
-        layer_by_node=layer_by_node,
-        anchors=anchors,
-        number_to_keep=number_by_layer[0],
-        min_sources=2,
-        weight_anchor_targets=3.0,
-        weight_same_layer_targets=-1.0,
-        weight_upstream_sources=1.0,
-    )
-
-    already_selected = (
-        selected_by_layer[0]
-        | selected_by_layer[1]
-    )
-
-    for current_layer in range(2, len(number_by_layer) + 1):
-        selected_previous_layer = selected_by_layer[current_layer - 1]
-
-        selected_current, ranking_current = select_upstream_layer(
+    if using_explicit_genes:
+        selected_by_layer = {0: set(anchors)}
+        selected_by_layer[1] = set(layers_genes)
+        print(
+            "Using explicitly configured genes; all start in Layer 1 and "
+            "candidate formation and ranking are skipped."
+        )
+    else:
+        candidate_pool = build_upstream_candidate_pool(
+            interactions=collectri_edges,
+            anchors=anchors,
+            number_of_layers=generation["num_layers"],
+        )
+        _, candidate_graph = build_candidate_graph(
+            interactions=collectri_edges,
+            anchors=anchors,
+            candidate_pool=candidate_pool,
+        )
+        layer_by_node = assign_minimal_layers(candidate_graph, anchors)
+        number_by_layer = generation["number_by_layer"]
+        selected_by_layer = {0: set(anchors)}
+        selected_by_layer[1], _ = select_layer_1(
             graph=candidate_graph,
             layer_by_node=layer_by_node,
-            current_layer=current_layer,
-            selected_previous_layer=selected_previous_layer,
-            already_selected=already_selected,
-            number_to_keep=number_by_layer[current_layer - 1],
-            weight_previous_targets=3.0,
-            weight_same_layer_targets=-1.0,
+            anchors=anchors,
+            number_to_keep=number_by_layer[0],
+            min_sources=selection["layer_1_min_sources"],
+            weight_anchor_targets=selection["weight_anchor_targets"],
+            weight_same_layer_targets=selection["weight_same_layer_targets"],
+            weight_upstream_sources=selection["weight_upstream_sources"],
         )
-
-        selected_by_layer[current_layer] = selected_current
-        ranking_by_layer[current_layer] = ranking_current
-
-        already_selected.update(selected_current)
+        already_selected = selected_by_layer[0] | selected_by_layer[1]
+        for current_layer in range(2, len(number_by_layer) + 1):
+            selected_by_layer[current_layer], _ = select_upstream_layer(
+                graph=candidate_graph,
+                layer_by_node=layer_by_node,
+                current_layer=current_layer,
+                selected_previous_layer=selected_by_layer[current_layer - 1],
+                already_selected=already_selected,
+                number_to_keep=number_by_layer[current_layer - 1],
+                weight_previous_targets=selection["weight_previous_targets"],
+                weight_same_layer_targets=selection["weight_same_layer_targets"],
+            )
+            already_selected.update(selected_by_layer[current_layer])
 
     selected_genes = set().union(
         *selected_by_layer.values()
@@ -1875,6 +1795,20 @@ def main() -> int:
         interactions=collectri_edges,
         selected_by_layer=selected_by_layer,
     )
+
+    if using_explicit_genes:
+        reconstructed_layers = reconstruct_selected_gene_layers(
+            layered_graph,
+            anchors,
+        )
+        print("\nReconstructed structural layers:")
+        for layer in sorted(set(reconstructed_layers.values())):
+            genes = sorted(
+                gene
+                for gene, assigned_layer in reconstructed_layers.items()
+                if assigned_layer == layer
+            )
+            print(f"Layer {layer}: {len(genes)} genes: {', '.join(genes)}")
 
     print("Selected full graph")
     print(f"Nodes: {selected_full_graph.number_of_nodes()}")
@@ -1904,17 +1838,34 @@ def main() -> int:
     print("\nUnresolved cycles:")
     print(unresolved_cycles)
 
-    print("\nIs DAG:", nx.is_directed_acyclic_graph(dag_graph))
+    if unresolved_cycles or not nx.is_directed_acyclic_graph(dag_graph):
+        warnings.warn(
+            "The reconstructed graph still contains unresolved cycles. "
+            "Execution stopped; no graph or figure was saved."
+        )
+        return 1
 
-    save_gene_graph(
+    graph_path = resolve_project_path(output["graph_file"])
+    figure_path = resolve_project_path(output["figure_file"])
+    save_gene_graph(dag_graph, graph_path)
+
+    plot_graph = reorganize_plot_layers(
         dag_graph,
-        "results/selected_gene_dag.pkl.gz",
+        plotting["minimum_peeled_candidates"],
     )
-
-    plot_graph = reorganize_plot_layers(dag_graph, 3)
-
-    draw_gene_graph(plot_graph)
-    plt.show()
+    fig, _ = draw_gene_graph(
+        plot_graph,
+        figsize=tuple(plotting["figsize"]),
+        node_size=plotting["node_size"],
+        anchor_node_size=plotting["anchor_node_size"],
+        font_size=plotting["font_size"],
+    )
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(figure_path, dpi=plotting["dpi"], bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved DAG: {graph_path}")
+    print(f"Saved figure: {figure_path}")
+    return 0
     
 if __name__ == "__main__":
     sys.exit(main())
