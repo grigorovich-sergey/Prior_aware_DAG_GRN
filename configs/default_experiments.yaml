@@ -1,0 +1,48 @@
+# Default configuration for post-training circuit intervention experiments.
+# A user-provided --config file is recursively merged over these values.
+
+input:
+  # Training metadata JSON produced by trainer.py.
+  results_file: "results/model_training_metadata.json"
+
+  # Optional DAG override. When null, experiments.py first tries the portable
+  # graph path saved in effective_config, then the saved resolved absolute path.
+  graph_file: null
+
+experiments:
+  # At least one experiment must be enabled. Keeping the baseline enabled is
+  # recommended because intervention effects are reported relative to it.
+  baseline: true
+  single_gene: true
+  single_edge: true
+
+  # Every condition is sampled once per repetition. For Aer, repetition r uses
+  # execution.seed_simulator + r, starting with r = 0.
+  repetitions: 1
+
+execution:
+  # These settings are independent of the settings used during training.
+  mode: "aer_noiseless"  # aer_noiseless, aer_noisy, or ibm_hardware
+  backend_name: null      # required for aer_noisy and ibm_hardware
+  shots: 4096
+  result_timeout: null
+  aer_method: "automatic"
+  seed_simulator: 42      # required for Aer; must be null for IBM hardware
+  aer_backend_options: {}
+  sampler_options: {}
+  use_runtime_session: false
+  session_max_time: null
+
+  # null submits every condition in one job per repetition. A positive value
+  # splits large condition sets into several jobs without changing conditions.
+  batch_size: null
+
+transpilation:
+  optimization_level: 1
+  seed_transpiler: 42
+  options: {}
+
+output:
+  # Do not include an extension. Both .csv and .json are written from this stem.
+  file_stem: "results/intervention_experiments"
+  show_progress: true
